@@ -37,7 +37,7 @@ let g:soulver_update_on_save = 0
 # Usage
 
 ### Live mode
-1. Create a file and run **:SoulverLiveOn** to start Soulver mode
+1. Create a file with the **.soulver** extension and run **:SoulverLiveOn** to start Soulver mode
 2. type in all the things you would usually with the regular Soulver app
 3. To end the session type **:SoulverLiveOff**
 

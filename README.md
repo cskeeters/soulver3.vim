@@ -15,6 +15,7 @@ To install and use this tool you'll need to complete the following steps.
 2. Install this plugin
 3. Edit a file with `.soulver` or `soulver` filetype
 4. Optionally, enable *Live* mode with `:SoulverLiveOn`
+5. Optionally, enable synchronous scrolling (`:windo set scrollbind`)
 
 # Design / Modes of Operation
 

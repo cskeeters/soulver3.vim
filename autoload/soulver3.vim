@@ -101,6 +101,10 @@ function! s:handler(job_id, data, event_type)
 
         let l:bufnr = bufnr(l:soulver_buf_name, 0)
         let s:soulver_output = l:empty_lines + s:soulver_output
+
+        " If buffer has more lines than our output, they would stay if not for this.
+        call deletebufline(l:bufnr, 1, '$')
+
         call setbufline(l:bufnr, 1, s:soulver_output)
         call s:Notify("soulver finshed!")
     endif

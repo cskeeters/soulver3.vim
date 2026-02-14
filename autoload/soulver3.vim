@@ -6,6 +6,14 @@ let s:file_name = ""
 let s:nb_empty_lines = 0
 let s:soulver_output = []
 
+function! s:Notify(msg)
+    if has('nvim')
+        lua vim.notify(vim.fn.eval('a:msg'))
+    else
+        echom a:msg
+    endif
+endfunction
+
 function! s:CheckSoulver3Install()
     let l:basic_calc = " 21 + 21"
     let l:res = system('echo'.l:basic_calc.' | '. g:soulver_cli_path)
@@ -94,6 +102,7 @@ function! s:handler(job_id, data, event_type)
         let l:bufnr = bufnr(l:soulver_buf_name, 0)
         let s:soulver_output = l:empty_lines + s:soulver_output
         call setbufline(l:bufnr, 1, s:soulver_output)
+        call s:Notify("soulver finshed!")
     endif
 
     " echo a:job_id . ' ' . a:event_type
@@ -133,6 +142,8 @@ function! soulver3#Soulver()
             let s:last_job = l:jobid
             let s:file_name = expand('%:t:r')
             call async#job#send(l:jobid, l:file_content, {'close_stdin': 1})
+
+            call s:Notify("Running soulver...")
         else
             echoerr 'job for soulver failed to start'
         endif

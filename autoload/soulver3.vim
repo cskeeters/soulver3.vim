@@ -41,12 +41,6 @@ function! s:handler(job_id, data, event_type)
     endif
 
     if a:event_type == "stdout"
-        " lua vim.notify("stdout: "..#vim.fn.eval('a:data'))
-        " echom len(a:data)
-        " for i in range(len(a:data))
-        "     echom i..": "..a:data[i]
-        " endfor
-
         " Each chunk has extra line since last line ends with \n
         call remove(a:data, -1)
 

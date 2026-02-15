@@ -23,6 +23,8 @@ let g:soulver_update_on_save = get(g:, 'soulver_update_on_save', 1)
 
 autocmd FileType soulver setlocal commentstring=#\ %s
 
+autocmd BufDelete * :call soulver3#BufDelete()
+
 if g:soulver_update_on_save == 1
     autocmd BufWritePost *.soulver :call soulver3#Soulver()
 endif

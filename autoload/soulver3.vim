@@ -5,6 +5,8 @@ let s:last_job = 0
 let s:file_name = ""
 let s:nb_empty_lines = 0
 let s:soulver_output = []
+let s:bufnr = 0 " .soulver
+let s:bufnr_map = {} " .soulver -> SoulverViewBuffer
 
 function! s:Notify(msg)
     if has('nvim')
@@ -69,22 +71,50 @@ function! s:handler(job_id, data, event_type)
     endif
 
     if a:event_type == "exit"
+        " Check to make sure the user didn't bdelete the source
+        if bufwinid(s:bufnr) == -1
+            call s:Notify("soulver finished, but cancelled")
+            return
+        endif
+
         let l:soulver_buf_name = s:file_name . "_SoulverViewBuffer"
+
+        " This will be -1 if the buffer doesn't exist
+        let l:bufnr = bufnr(l:soulver_buf_name, 0)
 
         let l:currentWindow=winnr()
 
+        :setlocal scrollbind
+
+        " See if our SoulverViewBuffer is loaded in any window.
         if bufwinid(l:soulver_buf_name) == -1
+
+            " Create a vertical split for SoulverViewBuffer
+            " We will have to reset focus later
             :vnew
-            :setlocal buftype=nofile
-            :setlocal bufhidden=hide
-            :setlocal noswapfile
-            :setlocal filetype=soulver
-            :setlocal nonumber norelativenumber
 
-            " Assign name for this buffer
-            :exe "file " . l:soulver_buf_name
+            " Only create a new buffer if it doesn't
+            if l:bufnr == -1
+                " Modify this empty buffer to serve as SoulverViewBuffer
+                :setlocal buftype=nofile
+                :setlocal bufhidden=hide
+                :setlocal noswapfile
+                :setlocal filetype=soulver
+                :setlocal nonumber norelativenumber
+                :setlocal scrollbind
 
-            " Set focus back
+                " Assign name for this buffer
+                :exe "file " . l:soulver_buf_name
+                let l:bufnr = bufnr(l:soulver_buf_name, 0)
+
+                " Store an association so we can sync close
+                let s:bufnr_map[s:bufnr] = l:bufnr
+            else
+                " Load SoulverViewBuffer into this split
+                :exe "buffer "..l:bufnr
+            endif
+
+            " Set focus back to the input
             :exec l:currentWindow.."wincmd w"
         endif
 
@@ -93,13 +123,16 @@ function! s:handler(job_id, data, event_type)
             call add(l:empty_lines, "")
         endfor
 
-        let l:bufnr = bufnr(l:soulver_buf_name, 0)
         let s:soulver_output = l:empty_lines + s:soulver_output
 
         " If buffer has more lines than our output, they would stay if not for this.
         call deletebufline(l:bufnr, 1, '$')
 
         call setbufline(l:bufnr, 1, s:soulver_output)
+
+        " One-time scroll sync since buffer has changed.
+        syncbind
+
         call s:Notify("soulver finshed!")
     endif
 
@@ -121,6 +154,7 @@ function! soulver3#Soulver()
         " The function is available, safe to use
         " let g:job = async#job#start(['ls'])
 
+        let s:bufnr = bufnr()
         let l:file_content = getline(1,'$')
         let s:nb_empty_lines = s:CountLineToOffset(l:file_content)
         " let l:file_content_str = join(l:file_content, "\n")
@@ -163,4 +197,23 @@ function! soulver3#LiveOff()
     augroup SoulverVimAutocomandGroup
         autocmd!
     augroup END
+endfunction
+
+function! soulver3#BufDelete()
+    let l:bufnr = expand('<abuf>')
+
+    for nr in keys(s:bufnr_map)
+        if l:bufnr == nr
+            " User closed .soulver, close SoulverViewBuffer
+
+            " Don't delete immediately since we're handling a BufDelete command
+            " exe "bdelete! "..s:bufnr_map[nr]
+
+            " Schedule deleting of associated SoulverViewBuffer
+            call timer_start(0, { tid -> bufloaded(s:bufnr_map[nr]) && execute('bwipeout! ' . s:bufnr_map[nr]) })
+        endif
+        if l:bufnr == s:bufnr_map[nr]
+            " User closed SoulverViewBuffer
+        endif
+    endfor
 endfunction

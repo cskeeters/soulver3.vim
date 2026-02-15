@@ -15,16 +15,43 @@ else
     let g:soulver_cli_path = get(g:, 'soulver_cli_path', "'/Applications/Soulver\ 3.app/Contents/MacOS/CLI/soulver'")
 endif
 
-command! Soulver :call soulver3#Soulver()
-command! SoulverLiveOn :call soulver3#LiveOn()
-command! SoulverLiveOff :call soulver3#LiveOff()
-
-let g:soulver_update_on_save = get(g:, 'soulver_update_on_save', 1)
+command! SoulverModeLive :call s:Soulver3ModeLive()
+command! SoulverModeSave :call s:Soulver3ModeSave()
+command! SoulverModeOff :call s:Soulver3ModeOff()
 
 autocmd FileType soulver setlocal commentstring=#\ %s
 
+" Track BufDelete so that we can close associated SoulverViewBuffer
 autocmd BufDelete * :call soulver3#BufDelete()
 
-if g:soulver_update_on_save == 1
-    autocmd BufWritePost *.soulver :call soulver3#Soulver()
-endif
+" These are not in autoload so that autoload isn't loaded until a .soulver file is opened
+function! s:Soulver3ModeLive()
+    augroup SoulverVimAutocomandGroup
+        autocmd!
+        autocmd BufRead,TextChanged,TextChangedP,TextChangedI *.soulver :call soulver3#Soulver()
+    augroup END
+
+    " Call for the current window only
+    call soulver3#Soulver()
+endfunction
+
+function! s:Soulver3ModeSave()
+    augroup SoulverVimAutocomandGroup
+        autocmd!
+        autocmd BufWritePost *.soulver :call soulver3#Soulver()
+    augroup END
+
+    " Call for the current window only
+    call soulver3#Soulver()
+endfunction
+
+function! s:Soulver3ModeOff()
+    augroup SoulverVimAutocomandGroup
+        autocmd!
+    augroup END
+
+    " Close SoulverViewBuffers
+    call soulver3#CloseViews()
+endfunction
+
+call s:Soulver3ModeLive()

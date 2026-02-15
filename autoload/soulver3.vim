@@ -71,6 +71,7 @@ function! soulver3#handler(job_id, data, event_type)
     endif
 
     if a:event_type == "exit"
+        let s:last_job = 0
         " Check to make sure the user didn't bdelete the source
         if bufwinid(s:bufnr) == -1
             call soulver3#Notify("soulver finished, but cancelled")
@@ -95,13 +96,6 @@ function! soulver3#handler(job_id, data, event_type)
 
             " Only create a new buffer if it doesn't
             if l:bufnr == -1
-                " Modify this empty buffer to serve as SoulverViewBuffer
-                :setlocal buftype=nofile
-                :setlocal bufhidden=hide
-                :setlocal noswapfile
-                :setlocal filetype=soulver
-                :setlocal nonumber norelativenumber
-                :setlocal scrollbind
 
                 " Assign name for this buffer
                 :exe "file " . l:soulver_buf_name
@@ -110,9 +104,21 @@ function! soulver3#handler(job_id, data, event_type)
                 " Store an association so we can sync close
                 let s:bufnr_map[s:bufnr] = l:bufnr
             else
+                " User may have :bdelete'd the buffer, but it may not be wiped
+                " out, so bufnr might be valid.  When we reload this, we need
+                " to set the options on the buffer again.
+
                 " Load SoulverViewBuffer into this split
                 :exe "buffer "..l:bufnr
             endif
+
+            " Modify this buffer to serve as SoulverViewBuffer
+            :setlocal buftype=nofile
+            :setlocal bufhidden=hide
+            :setlocal noswapfile
+            :setlocal filetype=soulver
+            :setlocal nonumber norelativenumber
+            :setlocal scrollbind
 
             " Set focus back to the input
             :exec l:currentWindow.."wincmd w"
@@ -141,6 +147,10 @@ endfunction
 
 
 function! soulver3#Soulver()
+    if &filetype != "soulver"
+        return
+    endif
+
     if ! exists("g:soulver_cli_path")
         echoerr "g:soulver_cli_path not defined"
         return
@@ -155,19 +165,24 @@ function! soulver3#Soulver()
         " The function is available, safe to use
         " let g:job = async#job#start(['ls'])
 
+        if s:last_job != 0
+            " Stop the last job
+            call async#job#stop(s:last_job)
+            let s:last_job = 0 " Block all updates to soulver_output
+        endif
+
         let s:bufnr = bufnr()
         let l:file_content = getline(1,'$')
         let s:nb_empty_lines = soulver3#CountLineToOffset(l:file_content)
         " let l:file_content_str = join(l:file_content, "\n")
 
-        let s:last_job = 0 " Block all updates to soulver_output
         let s:soulver_output = [] " Initialize/reset
 
         let l:argv = [g:soulver_cli_path]
         let l:jobid = async#job#start(l:argv, {
-            \ 'on_stdout': function('s:handler'),
-            \ 'on_stderr': function('s:handler'),
-            \ 'on_exit': function('s:handler'),
+            \ 'on_stdout': function('soulver3#handler'),
+            \ 'on_stderr': function('soulver3#handler'),
+            \ 'on_exit': function('soulver3#handler'),
             \ 'normalize': 'array'
         \ })
 
@@ -187,17 +202,14 @@ function! soulver3#Soulver()
 
 endfunction
 
-function! soulver3#LiveOn()
-    call soulver3#Soulver()
-    augroup SoulverVimAutocomandGroup
-        autocmd TextChanged,TextChangedP,TextChangedI *.soulver :call soulver3#Soulver()
-    augroup END
-endfunction
+function! soulver3#CloseViews()
+    for nr in keys(s:bufnr_map)
+        if bufloaded(s:bufnr_map[nr])
+            exe "bwipeout! "..s:bufnr_map[nr]
+        endif
 
-function! soulver3#LiveOff()
-    augroup SoulverVimAutocomandGroup
-        autocmd!
-    augroup END
+        call remove(s:bufnr_map, nr)
+    endfor
 endfunction
 
 function! soulver3#BufDelete()

@@ -12,14 +12,12 @@ soulver3.vim lets you use vim / neovim as a front end to [Soulver 3](https://sou
 To install and use this tool you'll need to complete the following steps.
 
 1. Install `soulver` (CLI)
-2. Install this plugin
-3. Edit a file with `.soulver` or `soulver` filetype
-4. Optionally, enable *Live* mode with `:SoulverLiveOn`
-5. Optionally, enable synchronous scrolling (`:windo set scrollbind`)
+2. Install this plugin and it's dependency
+3. Edit a file with `.soulver` or `soulver` file type
 
 # Design / Modes of Operation
 
-This plugin essentially, pipes the content of the buffer to soulver (the CLI), takes the output and puts it into a buffer loaded in a vertical split.
+This plugin essentially, pipes the content of the buffer to `soulver` (the CLI), takes the output and puts it into a buffer loaded in a vertical split.
 
 > If you want to understand how this works, you can create a `test.soulver` and run it through `soulver`.
 >
@@ -27,13 +25,19 @@ This plugin essentially, pipes the content of the buffer to soulver (the CLI), t
 > cat test.soulver | soulver
 > ```
 
-soulver3.vim runs `soulver` synchronously and `soulver` is not always blazingly fast.  Small files calculate fairly quickly, but a 1000 line file might take 2-3 seconds to calculate.
+This plugin will
+1. Enable scroll synchronization (scroll-binding)
+2. Update the results on change or save (depending on the mode)
+3. Close the *SoulveViewBuffer* when the `.soulver` buffer is unloaded
 
-To accommodate both scenarios, soulver3.vim operates in one of two modes:
-- In *Basic* mode, formulas are calculated by `soulver` **only when the buffer is saved**.
-- In *Live* mode, formulas are calculated in **real-time**.
+soulver3.vim operates in one of two modes:
+- In *Live* mode, formulas are calculated in **real-time**.  This is the default.
+- In *Save* mode, formulas are calculated by `soulver` **only when the buffer is saved**.
 
-*Basic* mode is for large files and is the default.  *Live* mode is for small files and must be enabled with `:SoulverLiveOn`, which can be mapped.
+`soulver` is only fast on smallish files, but soulver3.vim now runs `soulver` asynchronously, so *Live* mode is likely the right choice.
+
+> [!WARNING]
+> `soulver` has a limited capacity and stops calculating at around 950 lines depending on the input.
 
 # Installation
 
@@ -52,10 +56,14 @@ Install **soulver3.vim** with your favorite plugin manager
 ### VimPlug
 
 ```vim
+Plug 'prabirshrestha/async.vim'
 Plug 'Yohannfra/soulver3.vim'
-let g:soulver_cli_path = "/opt/homebrew/bin/soulver"
-" let g:soulver_cli_path = "/Applications/Soulver\ 3.app/Contents/MacOS/CLI/soulver"
-" let g:soulver_update_on_save = 0 # Set to zero to disable update on save
+
+" If custom path is required
+-- let g:soulver_cli_path = "/custom/path/to/soulver"
+
+" Optionally, start in save mode
+-- :SoulverModeSave
 ```
 
 
@@ -63,26 +71,20 @@ let g:soulver_cli_path = "/opt/homebrew/bin/soulver"
 
 ```lua
 return {
-    'Yohannfra/soulver3.vim',
+    enabled = true,
+    'cskeeters/soulver3.vim',
     lazy = true,
     ft="soulver",
+    dependencies = {
+        'prabirshrestha/async.vim'
+    },
     init = function()
-        -- vim.g.soulver_cli_path = "/custom/path/to/soulver"
-        -- vim.g.soulver_update_on_save = 0 -- Set to 0 to disable update on save
-
-        vim.api.nvim_create_autocmd("BufReadPost", {
-            pattern = "*.soulver",
-            callback = function()
-                vim.cmd("Soulver")
-                -- vim.cmd("SoulverLiveOn")
-            end,
-            desc = "Start Soulver",
-        })
+        -- vim.g.soulver_cli_path = "/opt/homebrew/bin/soulver"
     end,
     config = function()
-        vim.keymap.set('n', '<leader>S', [[<Cmd>Soulver<Cr>]], { desc="Run Soulver" });
-        vim.keymap.set('n', '<leader><leader>s', [[<Cmd>SoulverLiveOn<Cr>]], { desc="Enable Soulver Live" });
-        vim.keymap.set('n', '<leader><leader>S', [[<Cmd>SoulverLiveOff<Cr>]], { desc="Disable Soulver Live" });
+        vim.keymap.set('n', '<localleader>l', [[<Cmd>SoulverModeLive<Cr>]], { desc="Soulver Mode Live" });
+        vim.keymap.set('n', '<localleader>s', [[<Cmd>SoulverModeSave<Cr>]], { desc="Soulver Mode Save" });
+        vim.keymap.set('n', '<localleader>o', [[<Cmd>SoulverModeOff<Cr>]],  { desc="Soulver Mode Off" });
     end
 }
 ```
@@ -94,18 +96,15 @@ return {
 | Setting                    | Description             | Default     |
 |----------------------------|-------------------------|-------------|
 | `g:soulver_cli_path`       | Path to `soulver`       | will detect |
-| `g:soulver_update_on_save` | Update values upon save | 1           |
 
 
 ## Commands
 
-| Command          | Description                                  |
-|------------------|----------------------------------------------|
-| `:Soulver`        | Start Basic Mode for the current buffer [^1] |
-| `:SoulverLiveOn`  | Enable Live Mode                             |
-| `:SoulverLiveOff` | Disable Live Mode                            |
-
-[^1]: Not required for files with `.soulver` extension.
+| Command            | Description      |
+|--------------------|------------------|
+| `:SoulverModeLive` | Update real-time |
+| `:SoulverModeSave` | Update on save   |
+| `:SoulverModeOff`  | Disable Soulver  |
 
 # Acknowledgments
 

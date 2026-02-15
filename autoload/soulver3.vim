@@ -16,13 +16,13 @@ function! soulver3#Notify(msg)
     endif
 endfunction
 
-function! s:CheckSoulver3Install()
+function! soulver3#CheckSoulver3Install()
     let l:basic_calc = " 21 + 21"
     let l:res = system('echo'.l:basic_calc.' | '. g:soulver_cli_path)
     return l:res == "42\n"
 endfunction
 
-function! s:CountLineToOffset(fc)
+function! soulver3#CountLineToOffset(fc)
     let l:count = 0
 
     for l in a:fc
@@ -36,7 +36,7 @@ function! s:CountLineToOffset(fc)
     return l:count
 endfunction
 
-function! s:handler(job_id, data, event_type)
+function! soulver3#handler(job_id, data, event_type)
     " Ignore updates from old jobs
     if a:job_id != s:last_job
         return
@@ -145,7 +145,8 @@ function! soulver3#Soulver()
         echoerr "g:soulver_cli_path not defined"
         return
     endif
-    if s:CheckSoulver3Install() == 0
+
+    if soulver3#CheckSoulver3Install() == 0
         echoerr "Basic calculation with soulver gave wrong result, check your installation"
         return
     endif
@@ -156,7 +157,7 @@ function! soulver3#Soulver()
 
         let s:bufnr = bufnr()
         let l:file_content = getline(1,'$')
-        let s:nb_empty_lines = s:CountLineToOffset(l:file_content)
+        let s:nb_empty_lines = soulver3#CountLineToOffset(l:file_content)
         " let l:file_content_str = join(l:file_content, "\n")
 
         let s:last_job = 0 " Block all updates to soulver_output

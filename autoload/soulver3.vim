@@ -8,7 +8,7 @@ let s:soulver_output = []
 let s:bufnr = 0 " .soulver
 let s:bufnr_map = {} " .soulver -> SoulverViewBuffer
 
-function! s:Notify(msg)
+function! soulver3#Notify(msg)
     if has('nvim')
         lua vim.notify(vim.fn.eval('a:msg'))
     else
@@ -73,7 +73,7 @@ function! s:handler(job_id, data, event_type)
     if a:event_type == "exit"
         " Check to make sure the user didn't bdelete the source
         if bufwinid(s:bufnr) == -1
-            call s:Notify("soulver finished, but cancelled")
+            call soulver3#Notify("soulver finished, but cancelled")
             return
         endif
 
@@ -133,7 +133,7 @@ function! s:handler(job_id, data, event_type)
         " One-time scroll sync since buffer has changed.
         syncbind
 
-        call s:Notify("soulver finshed!")
+        call soulver3#Notify("soulver finshed!")
     endif
 
     " echo a:job_id . ' ' . a:event_type
@@ -175,7 +175,7 @@ function! soulver3#Soulver()
             let s:file_name = expand('%:t:r')
             call async#job#send(l:jobid, l:file_content, {'close_stdin': 1})
 
-            call s:Notify("Running soulver...")
+            call soulver3#Notify("Running soulver...")
         else
             echoerr 'job for soulver failed to start'
         endif
